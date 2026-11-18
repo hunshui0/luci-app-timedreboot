@@ -1,0 +1,62 @@
+name: Build timedreboot IPK
+
+on:
+  push:
+    branches:
+      - build/timedreboot-ipk
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      SDK_BASE: https://downloads.openwrt.org/releases/24.10.7/targets/rockchip/armv8
+      SDK_ARCHIVE: openwrt-sdk-24.10.7-rockchip-armv8_gcc-13.3.0_musl.Linux-x86_64.tar.zst
+      SDK_SHA256: 1e07c546669b4792c846e7a775156bb1e6d9d727efbc6d5999a02c96c5ab8ea9
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+
+      - name: Install SDK prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential clang flex bison gawk gettext \
+            libncurses-dev libssl-dev zlib1g-dev python3-setuptools rsync swig zstd
+
+      - name: Build the opkg package
+        shell: bash
+        run: |
+          cd "$RUNNER_TEMP"
+          curl --fail --location --retry 3 --output "$SDK_ARCHIVE" "$SDK_BASE/$SDK_ARCHIVE"
+          printf '%s  %s\n' "$SDK_SHA256" "$SDK_ARCHIVE" | sha256sum --check -
+          tar --zstd -xf "$SDK_ARCHIVE"
+          cd "${SDK_ARCHIVE%.tar.zst}"
+
+          ./scripts/feeds update -a
+          ./scripts/feeds install luci-base luci-compat bash
+
+          install -d package/luci-app-timedreboot
+          cp -a "$GITHUB_WORKSPACE"/{Makefile,LICENSE,luasrc,po,root} package/luci-app-timedreboot/
+          printf 'CONFIG_PACKAGE_luci-app-timedreboot=m\n' >> .config
+          make defconfig
+          grep -qx 'CONFIG_PACKAGE_luci-app-timedreboot=m' .config
+          make -j2 package/luci-app-timedreboot/compile V=s
+
+          shopt -s globstar nullglob
+          packages=(bin/**/luci-app-timedreboot_*_all.ipk)
+          test "${#packages[@]}" -ge 1
+          install -d "$GITHUB_WORKSPACE/dist"
+          cp -- "${packages[0]}" "$GITHUB_WORKSPACE/dist/"
+          tar -xOzf "${packages[0]}" ./control.tar.gz | tar -xzOf - ./control
+          sha256sum "$GITHUB_WORKSPACE"/dist/*.ipk
+
+      - name: Upload the IPK
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: luci-app-timedreboot-ipk
+          path: dist/*.ipk
+          if-no-files-found: error

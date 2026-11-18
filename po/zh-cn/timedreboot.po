@@ -16,6 +16,15 @@ msgstr "星期"
 msgid "Everyday"
 msgstr "每天"
 
+msgid "Reboot schedule"
+msgstr "重启周期"
+
+msgid "Weekly"
+msgstr "每周"
+
+msgid "Select at least one weekday."
+msgstr "请至少选择一天。"
+
 msgid "Day"
 msgstr "天"
 
@@ -47,7 +56,7 @@ msgid "Sunday"
 msgstr "星期天"
 
 msgid "Someday"
-msgstr "哪天"
+msgstr "每月指定日期"
 
 msgid "Days of month"
 msgstr "具体哪号"

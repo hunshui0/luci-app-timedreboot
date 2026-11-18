@@ -1,0 +1,19 @@
+<%+cbi/valueheader%>
+<%
+    local util = require "luci.util"
+    local values = {}
+    for value in util.imatch(self:cfgvalue(section) or self.default) do
+        values[#values + 1] = value
+    end
+%>
+<div<%=attr("data-ui-widget", util.serialize_json({
+    "Dropdown", values, self:choices(), {
+        id = cbid,
+        name = cbid,
+        sort = self.keylist,
+        multiple = true,
+        optional = self.optional or self.rmempty,
+        disabled = self.readonly
+    }
+}))%>></div>
+<%+cbi/valuefooter%>
